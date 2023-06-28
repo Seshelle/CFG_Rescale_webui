@@ -1,5 +1,4 @@
 import math
-import random
 import torch
 
 import gradio as gr
@@ -8,18 +7,27 @@ from modules import devices, deepbooru, images, processing, shared, sd_samplers_
 from modules.processing import Processed
 from modules.shared import opts, state
 
-from PIL import Image
-import copy
-
-global pixmap
-global xn
-
-
 class Script(scripts.Script):
 
     def __init__(self):
-        self.fi = 0
         self.old_denoising = None
+
+        def find_module(module_names):
+            if isinstance(module_names, str):
+                module_names = [s.strip() for s in module_names.split(",")]
+            for data in scripts.scripts_data:
+                if data.script_class.__module__ in module_names and hasattr(data, "module"):
+                    return data.module
+            return None
+
+        def rescale_opt(p, x, xs):
+            opts.cfg_rescale_fi = x
+            opts.enable_furry_cocks = False
+
+        xyz_grid = find_module("xyz_grid.py, xy_grid.py")
+        if xyz_grid:
+            extra_axis_options = [xyz_grid.AxisOption("Rescale CFG", float, rescale_opt)]
+            xyz_grid.axis_options.extend(extra_axis_options)
 
     def title(self):
         return "CFG Rescale Extension"
@@ -34,7 +42,7 @@ class Script(scripts.Script):
     def cfg_replace(self, x_out, conds_list, uncond, cond_scale):
         denoised_uncond = x_out[-uncond.shape[0]:]
         denoised = torch.clone(denoised_uncond)
-        fi = self.fi
+        fi = opts.cfg_rescale_fi
 
         for i, conds in enumerate(conds_list):
             for cond_index, weight in conds:
@@ -49,8 +57,9 @@ class Script(scripts.Script):
         return denoised
 
     def process(self, p, rescale):
-        self.fi = rescale
-        sd_samplers_kdiffusion.CFGDenoiser.fi = rescale
+        if opts.enable_furry_cocks:
+            opts.cfg_rescale_fi = rescale
+        opts.enable_furry_cocks = True
         if self.old_denoising is None:
             self.old_denoising = sd_samplers_kdiffusion.CFGDenoiser.combine_denoised
 
