@@ -11,6 +11,7 @@ class Script(scripts.Script):
 
     def __init__(self):
         self.old_denoising = None
+        opts.enable_furry_cocks = True
 
         def find_module(module_names):
             if isinstance(module_names, str):
