@@ -1,5 +1,5 @@
 # CFG_Rescale_webui
-Adds a CFG rescale option to A1111 webui for vpred models. implements features described in https://arxiv.org/pdf/2305.08891.pdf
+Adds a CFG rescale option to A1111 webui for vpred models. Implements features described in https://arxiv.org/pdf/2305.08891.pdf
 
 When installed, you will see a CFG slider below appear below the seed selection.
 
