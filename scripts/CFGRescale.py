@@ -204,8 +204,8 @@ class Script(scripts.Script):
 
         if opts.enable_furry_cocks:
             opts.cfg_rescale_fi = rescale
-            opts.enable_furry_cocks = True
-            sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.cfg_replace
+        opts.enable_furry_cocks = True
+        sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.cfg_replace
 
         if rescale > 0:
             ddim.DDIMSampler.p_sample_ddim = p_sample_ddim_override
