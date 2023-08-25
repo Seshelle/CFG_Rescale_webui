@@ -227,6 +227,15 @@ class Script(scripts.Script):
 def on_infotext_pasted(infotext, params):
     if "CFG Rescale" not in params:
         params["CFG Rescale"] = 0
+
+        if "CFG Rescale φ" in params:
+            params["CFG Rescale"] = params["CFG Rescale φ"]
+            del params["CFG Rescale φ"]
+
+        if "CFG Rescale phi" in params and scripts.scripts_txt2img.script("Neutral Prompt") is None:
+            params["CFG Rescale"] = params["CFG Rescale phi"]
+            del params["CFG Rescale phi"]
+
     if "DDIM Trailing" not in params:
         params["DDIM Trailing"] = False
 
