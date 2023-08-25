@@ -4,7 +4,7 @@ import torch
 import gradio as gr
 import numpy as np
 import modules.scripts as scripts
-from modules import devices, images, processing, shared, sd_samplers_kdiffusion, sd_samplers_compvis
+from modules import devices, images, processing, shared, sd_samplers_kdiffusion, sd_samplers_compvis, script_callbacks
 from modules.processing import Processed
 from modules.shared import opts, state
 from ldm.models.diffusion import ddim
@@ -44,8 +44,16 @@ class Script(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        rescale = gr.Slider(minimum=0, maximum=1, step=0.01, label='CFG Rescale', value=0, elem_id=self.elem_id("rescale_ext"), visible=True, interactive=True)
-        trailing = gr.Checkbox(label="DDIM Trailing", default=False)
+        with gr.Accordion("CFG Rescale", open=True, elem_id="cfg_rescale"):
+            rescale = gr.Slider(label="CFG Rescale", show_label=False, minimum=0.0, maximum=1.0, step=0.01, value=0.0)
+            trailing = gr.Checkbox(label="DDIM Trailing", default=False)
+        self.infotext_fields = [
+            (rescale, "CFG Rescale"),
+            (trailing, "DDIM Trailing"),
+        ]
+        self.paste_field_names = []
+        for _, field_name in self.infotext_fields:
+            self.paste_field_names.append(field_name)
         return [rescale, trailing]
 
     def cfg_replace(self, x_out, conds_list, uncond, cond_scale):
@@ -215,3 +223,11 @@ class Script(scripts.Script):
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.old_denoising
         ddim.DDIMSampler.make_schedule = self.old_schedule
         ddim.DDIMSampler.p_sample_ddim = self.old_sample
+
+def on_infotext_pasted(infotext, params):
+    if "CFG Rescale" not in params:
+        params["CFG Rescale"] = 0
+    if "DDIM Trailing" not in params:
+        params["DDIM Trailing"] = False
+
+script_callbacks.on_infotext_pasted(on_infotext_pasted)
