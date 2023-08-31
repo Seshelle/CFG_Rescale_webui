@@ -12,13 +12,14 @@ from ldm.models.diffusion import ddim
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, noise_like
 
 
+
 class Script(scripts.Script):
 
     def __init__(self):
         self.old_denoising = sd_samplers_kdiffusion.CFGDenoiser.combine_denoised
         self.old_schedule = ddim.DDIMSampler.make_schedule
         self.old_sample = ddim.DDIMSampler.p_sample_ddim
-        opts.enable_furry_cocks = True
+        globals()['enable_furry_cocks'] = True
 
         def find_module(module_names):
             if isinstance(module_names, str):
@@ -29,8 +30,8 @@ class Script(scripts.Script):
             return None
 
         def rescale_opt(p, x, xs):
-            opts.cfg_rescale_fi = x
-            opts.enable_furry_cocks = False
+            globals()['cfg_rescale_fi'] = x
+            globals()['enable_furry_cocks'] = False
 
         xyz_grid = find_module("xyz_grid.py, xy_grid.py")
         if xyz_grid:
@@ -59,7 +60,7 @@ class Script(scripts.Script):
     def cfg_replace(self, x_out, conds_list, uncond, cond_scale):
         denoised_uncond = x_out[-uncond.shape[0]:]
         denoised = torch.clone(denoised_uncond)
-        fi = opts.cfg_rescale_fi
+        fi = globals()['cfg_rescale_fi']
 
         for i, conds in enumerate(conds_list):
             for cond_index, weight in conds:
@@ -163,7 +164,7 @@ class Script(scripts.Script):
                     c_in = torch.cat([unconditional_conditioning, c])
                 model_uncond, model_t = self.model.apply_model(x_in, t_in, c_in).chunk(2)
                 model_output = model_uncond + unconditional_guidance_scale * (model_t - model_uncond)
-                fi = opts.cfg_rescale_fi
+                fi = globals()['cfg_rescale_fi']
                 if fi > 0:
                     model_output = rescale_noise_cfg(model_output, model_t, guidance_rescale=fi)
 
@@ -210,9 +211,9 @@ class Script(scripts.Script):
             ddim.DDIMSampler.make_schedule = schedule_override
             p.extra_generation_params["DDIM Trailing"] = True
 
-        if opts.enable_furry_cocks:
-            opts.cfg_rescale_fi = rescale
-        opts.enable_furry_cocks = True
+        if globals()['enable_furry_cocks']:
+            globals()['cfg_rescale_fi'] = rescale
+        globals()['enable_furry_cocks'] = True
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.cfg_replace
 
         if rescale > 0:
