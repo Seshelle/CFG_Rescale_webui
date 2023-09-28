@@ -4,7 +4,7 @@ import torch
 import gradio as gr
 import numpy as np
 import modules.scripts as scripts
-from modules import devices, images, processing, shared, sd_samplers_kdiffusion, sd_samplers_compvis, script_callbacks, sd_samplers_cfg_denoiser
+from modules import devices, images, processing, shared, sd_samplers_kdiffusion, sd_samplers_compvis, script_callbacks
 from modules.processing import Processed
 from modules.shared import opts, state
 from ldm.models.diffusion import ddim
@@ -93,7 +93,6 @@ class Script(scripts.Script):
             globals()['cfg_rescale_fi'] = rescale
         globals()['enable_furry_cocks'] = True
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.cfg_replace
-        # sd_samplers_cfg_denoiser.CFGDenoiser.combine_denoised = self.cfg_replace
 
         if rescale > 0:
             p.extra_generation_params["CFG Rescale"] = rescale
@@ -146,19 +145,19 @@ class Script(scripts.Script):
                 res_img = postfix(processed.images[i], rec_strength)
                 if n_img > 1 and i != 0:
                     processed.images.extend([res_img])
-                elif n_img == 1:
+                elif n_img == 1 or not opts.grid_save:
                     processed.images.extend([res_img])
                 
                 # Save images to disk
                 if opts.samples_save:
                     ind = i
-                    if i > 0 and n_img > 1:
+                    if (i > 0 and n_img > 1) and opts.grid_save:
                         ind = i-1
 
                     prompt_infotext = processing.create_infotext(p, p.all_prompts, p.all_seeds, p.all_subseeds, index=ind)
                     if n_img > 1 and i != 0:
                         images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i-1], prompt=p.all_prompts[i-1], info=prompt_infotext, p=p, suffix="colorfix")
-                    elif n_img == 1:
+                    elif n_img == 1 or not opts.grid_save:
                         images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i], prompt=p.all_prompts[i], info=prompt_infotext, p=p, suffix="colorfix")
 
 def on_infotext_pasted(infotext, params):
