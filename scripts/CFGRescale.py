@@ -145,7 +145,7 @@ class Script(scripts.Script):
                 res_img = postfix(processed.images[i], rec_strength)
                 if n_img > 1 and i != 0:
                     processed.images.extend([res_img])
-                elif n_img == 1 or not opts.grid_save:
+                elif n_img == 1 or not opts.return_grid:
                     processed.images.extend([res_img])
                 
                 # Save images to disk
@@ -157,7 +157,7 @@ class Script(scripts.Script):
                     prompt_infotext = processing.create_infotext(p, p.all_prompts, p.all_seeds, p.all_subseeds, index=ind)
                     if n_img > 1 and i != 0:
                         images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i-1], prompt=p.all_prompts[i-1], info=prompt_infotext, p=p, suffix="colorfix")
-                    elif n_img == 1 or not opts.grid_save:
+                    elif n_img == 1 or not opts.return_grid:
                         images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i], prompt=p.all_prompts[i], info=prompt_infotext, p=p, suffix="colorfix")
 
 def on_infotext_pasted(infotext, params):
