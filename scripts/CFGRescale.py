@@ -105,26 +105,27 @@ class Script(scripts.Script):
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.old_denoising
 
         def postfix(img, rec_strength):
-            p = 0.0005 * rec_strength
+            prec = 0.0005 * rec_strength
             r, g, b = img.split()
             #r_min, r_max = np.percentile(r, p), np.percentile(r, 100.0 - p)
             #g_min, g_max = np.percentile(g, p), np.percentile(g, 100.0 - p)
             #b_min, b_max = np.percentile(b, p), np.percentile(b, 100.0 - p)
             rh, rbins = np.histogram(r, 256, (0, 256))
-            tmp = np.where(rh > rh.sum() * p)[0]
+            tmp = np.where(rh > rh.sum() * prec)[0]
             r_min = tmp.min()
             r_max = tmp.max()
 
             gh, gbins = np.histogram(g, 256, (0, 256))
-            tmp = np.where(gh > gh.sum() * p)[0]
+            tmp = np.where(gh > gh.sum() * prec)[0]
             g_min = tmp.min()
             g_max = tmp.max()
 
             bh, bbins = np.histogram(b, 256, (0, 256))
-            tmp = np.where(bh > bh.sum() * p)[0]
+            tmp = np.where(bh > bh.sum() * prec)[0]
             b_min = tmp.min()
             b_max = tmp.max()
 
+            new_img = img.copy()
             for i in range(img.width):  # for every pixel:
                 for j in range(img.height):
                     pix = img.getpixel((i, j))
@@ -135,13 +136,30 @@ class Script(scripts.Script):
                     tmp[0] = int(255 * (min(max(pix[0], r_min), r_max) - r_min) / (r_max - r_min))
                     tmp[1] = int(255 * (min(max(pix[1], g_min), g_max) - g_min) / (g_max - g_min))
                     tmp[2] = int(255 * (min(max(pix[2], b_min), b_max) - b_min) / (b_max - b_min))
-                    img.putpixel((i, j), (tmp[0], tmp[1], tmp[2]))
+                    new_img.putpixel((i, j), (tmp[0], tmp[1], tmp[2]))
 
-            return img
+            return new_img
 
         if recolor:
-            for i in range(len(processed.images)):
-                processed.images[i] = postfix(processed.images[i], rec_strength)
+            n_img = len(processed.images)
+            for i in range(n_img):
+                res_img = postfix(processed.images[i], rec_strength)
+                if n_img > 1 and i != 0:
+                    processed.images.extend([res_img])
+                elif n_img == 1:
+                    processed.images.extend([res_img])
+                
+                # Save images to disk
+                if opts.samples_save:
+                    ind = i
+                    if i > 0 and n_img > 1:
+                        ind = i-1
+
+                    prompt_infotext = processing.create_infotext(p, p.all_prompts, p.all_seeds, p.all_subseeds, index=ind)
+                    if n_img > 1 and i != 0:
+                        images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i-1], prompt=p.all_prompts[i-1], info=prompt_infotext, p=p, suffix="colorfix")
+                    elif n_img == 1:
+                        images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i], prompt=p.all_prompts[i], info=prompt_infotext, p=p, suffix="colorfix")
 
 def on_infotext_pasted(infotext, params):
     if "CFG Rescale" not in params:
