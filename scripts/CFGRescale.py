@@ -108,9 +108,12 @@ class Script(scripts.Script):
         def postfix(img, rec_strength):
             prec = 0.0005 * rec_strength
             r, g, b = img.split()
+
+            # softer effect
             # r_min, r_max = np.percentile(r, p), np.percentile(r, 100.0 - p)
             # g_min, g_max = np.percentile(g, p), np.percentile(g, 100.0 - p)
             # b_min, b_max = np.percentile(b, p), np.percentile(b, 100.0 - p)
+
             rh, rbins = np.histogram(r, 256, (0, 256))
             tmp = np.where(rh > rh.sum() * prec)[0]
             r_min = tmp.min()
@@ -126,18 +129,11 @@ class Script(scripts.Script):
             b_min = tmp.min()
             b_max = tmp.max()
 
-            new_img = img.copy()
-            for i in range(img.width):  # for every pixel:
-                for j in range(img.height):
-                    pix = img.getpixel((i, j))
-                    tmp = [0] * 3
-                    # tmp[0] = int((np.clip(pix[0], r_min, r_max) - r_min) / (r_max - r_min) * 255)
-                    # tmp[1] = int((np.clip(pix[1], g_min, g_max) - g_min) / (g_max - g_min) * 255)
-                    # tmp[2] = int((np.clip(pix[2], b_min, b_max) - b_min) / (b_max - b_min) * 255)
-                    tmp[0] = int(255 * (min(max(pix[0], r_min), r_max) - r_min) / (r_max - r_min))
-                    tmp[1] = int(255 * (min(max(pix[1], g_min), g_max) - g_min) / (g_max - g_min))
-                    tmp[2] = int(255 * (min(max(pix[2], b_min), b_max) - b_min) / (b_max - b_min))
-                    new_img.putpixel((i, j), (tmp[0], tmp[1], tmp[2]))
+            r = r.point(lambda i: int(255 * (min(max(i, r_min), r_max) - r_min) / (r_max - r_min)))
+            g = g.point(lambda i: int(255 * (min(max(i, g_min), g_max) - g_min) / (g_max - g_min)))
+            b = b.point(lambda i: int(255 * (min(max(i, b_min), b_max) - b_min) / (b_max - b_min)))
+
+            new_img = Image.merge("RGB", (r, g, b))
 
             return new_img
 
