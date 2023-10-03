@@ -4,7 +4,8 @@ import torch
 import gradio as gr
 import numpy as np
 import modules.scripts as scripts
-from modules import devices, images, processing, shared, sd_samplers_kdiffusion, sd_samplers_compvis, script_callbacks
+import modules.images as saving
+from modules import devices, processing, shared, sd_samplers_kdiffusion, sd_samplers_compvis, script_callbacks
 from modules.processing import Processed
 from modules.shared import opts, state
 from ldm.models.diffusion import ddim
@@ -101,6 +102,17 @@ class Script(scripts.Script):
 
         if recolor:
             p.extra_generation_params["Auto Color Fix Strength"] = rec_strength
+            p.do_not_save_samples = True
+
+    def postprocess_batch_list(self, p, pp, rescale, recolor, rec_strength, show_original, batch_number):
+        if recolor and show_original:
+            num = len(pp.images)
+            for i in range(num):
+                pp.images.append(pp.images[i])
+                p.prompts.append(p.prompts[i])
+                p.negative_prompts.append(p.negative_prompts[i])
+                p.seeds.append(p.seeds[i])
+                p.subseeds.append(p.subseeds[i])
 
     def postprocess(self, p, processed, rescale, recolor, rec_strength, show_original):
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.old_denoising
@@ -138,41 +150,42 @@ class Script(scripts.Script):
             return new_img
 
         if recolor:
+            grab = 0
             n_img = len(processed.images)
-            if not show_original:
-                for i in range(n_img):
-                    doit = False
+            for i in range(n_img):
+                doit = False
+
+                if show_original:
+                    check = i
+                    if opts.return_grid:
+                        if i == 0:
+                            continue
+                        else:
+                            check = check - 1
+                    doit = check % (p.batch_size * 2) >= p.batch_size
+                else:
                     if n_img > 1 and i != 0:
                         doit = True
                     elif n_img == 1 or not opts.return_grid:
                         doit = True
 
-                    if doit:
-                        res_img = postfix(processed.images[i], rec_strength)
-                        processed.images[i] = res_img
-                        if opts.samples_save:
-                            images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i], prompt=p.all_prompts[i],
-                                              info=prompt_infotext, p=p, suffix="colorfix")
-            else:
-                for i in range(n_img):
+                if doit:
                     res_img = postfix(processed.images[i], rec_strength)
-                    if n_img > 1 and i != 0:
-                        processed.images.extend([res_img])
-                    elif n_img == 1 or not opts.return_grid:
-                        processed.images.extend([res_img])
-
-                    ind = i
-                    if (i != 0 and n_img > 1) and opts.return_grid:
-                        ind = i - 1
-                    prompt_infotext = processing.create_infotext(p, p.all_prompts, p.all_seeds, p.all_subseeds, index=ind)
-                    # Save images to disk
                     if opts.samples_save:
-                        if n_img > 1 and i != 0:
-                            images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i - 1],
-                                              prompt=p.all_prompts[i - 1], info=prompt_infotext, p=p, suffix="colorfix")
-                        elif n_img == 1 or not opts.return_grid:
-                            images.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[i], prompt=p.all_prompts[i],
-                                              info=prompt_infotext, p=p, suffix="colorfix")
+                        ind = grab
+                        grab += 1
+                        prompt_infotext = processing.create_infotext(p, p.all_prompts, p.all_seeds, p.all_subseeds,
+                                                                     index=ind)
+                        # Save images to disk
+                        if opts.samples_save:
+                                saving.save_image(processed.images[i], p.outpath_samples, "", seed=p.all_seeds[ind],
+                                                  prompt=p.all_prompts[ind],
+                                                  info=prompt_infotext, p=p, suffix="colorfix")
+                                saving.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[ind],
+                                                  prompt=p.all_prompts[ind],
+                                                  info=prompt_infotext, p=p, suffix="colorfix")
+
+                    processed.images[i] = res_img
 
 
 def on_infotext_pasted(infotext, params):
