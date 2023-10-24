@@ -57,8 +57,10 @@ class Script(scripts.Script):
                 # That said, this option is still kinda broken. it shows two "original images" on the grid, instead of showing one of each
                 # But it properly loads both images in the results, just not on the grid.
                 # Not sure what is going on and how to fix it.
-                # Batch grids are also broken when not using this option.
+                # Batch grids will always show the original images, regardless of this option.
+                # XYZ grids seems to be applying the colorfix if this option is disabled.
                 show_original = gr.Checkbox(label="Show Original Images in grid", elem_id=self.elem_id("show_original"), visible=False, default=False)
+                
                 # Added a new one to actually keep the original images or not
                 keep_original = gr.Checkbox(label="Keep Original Images", elem_id=self.elem_id("keep_original"), visible=False, default=False)
 
