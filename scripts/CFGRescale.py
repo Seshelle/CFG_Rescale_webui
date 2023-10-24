@@ -53,15 +53,22 @@ class Script(scripts.Script):
                 rec_strength = gr.Slider(label="Fix Strength", interactive=True, visible=False,
                                          elem_id=self.elem_id("rec_strength"), minimum=0.1, maximum=10.0, step=0.1,
                                          value=1.0)
-                show_original = gr.Checkbox(label="Keep Original Images", elem_id=self.elem_id("show_original"), visible=False, default=False)
+                # Renamed the option, since that seems to be your original intention
+                # That said, this option is still kinda broken. it shows two "original images" on the grid, instead of showing one of each
+                # But it properly loads both images in the results, just not on the grid.
+                # Not sure what is going on and how to fix it.
+                # Batch grids are also broken when not using this option.
+                show_original = gr.Checkbox(label="Show Original Images in grid", elem_id=self.elem_id("show_original"), visible=False, default=False)
+                # Added a new one to actually keep the original images or not
+                keep_original = gr.Checkbox(label="Keep Original Images", elem_id=self.elem_id("keep_original"), visible=False, default=False)
 
             def show_recolor_strength(rec_checked):
-                return [gr.update(visible=rec_checked), gr.update(visible=rec_checked)]
+                return [gr.update(visible=rec_checked), gr.update(visible=rec_checked), gr.update(visible=rec_checked)]
 
             recolor.change(
                 fn=show_recolor_strength,
                 inputs=recolor,
-                outputs=[rec_strength, show_original]
+                outputs=[rec_strength, show_original, keep_original]
             )
 
         self.infotext_fields = [
@@ -71,7 +78,7 @@ class Script(scripts.Script):
         self.paste_field_names = []
         for _, field_name in self.infotext_fields:
             self.paste_field_names.append(field_name)
-        return [rescale, recolor, rec_strength, show_original]
+        return [rescale, recolor, rec_strength, show_original, keep_original]
 
     def cfg_replace(self, x_out, conds_list, uncond, cond_scale):
         denoised_uncond = x_out[-uncond.shape[0]:]
@@ -90,7 +97,7 @@ class Script(scripts.Script):
 
         return denoised
 
-    def process(self, p, rescale, recolor, rec_strength, show_original):
+    def process(self, p, rescale, recolor, rec_strength, show_original, keep_original):
 
         if globals()['enable_furry_cocks']:
             globals()['cfg_rescale_fi'] = rescale
@@ -104,7 +111,7 @@ class Script(scripts.Script):
             p.extra_generation_params["Auto Color Fix Strength"] = rec_strength
             p.do_not_save_samples = True
 
-    def postprocess_batch_list(self, p, pp, rescale, recolor, rec_strength, show_original, batch_number):
+    def postprocess_batch_list(self, p, pp, rescale, recolor, rec_strength, show_original, keep_original, batch_number):
         if recolor and show_original:
             num = len(pp.images)
             for i in range(num):
@@ -114,7 +121,7 @@ class Script(scripts.Script):
                 p.seeds.append(p.seeds[i])
                 p.subseeds.append(p.subseeds[i])
 
-    def postprocess(self, p, processed, rescale, recolor, rec_strength, show_original):
+    def postprocess(self, p, processed, rescale, recolor, rec_strength, show_original, keep_original):
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.old_denoising
 
         def postfix(img, rec_strength):
@@ -178,12 +185,15 @@ class Script(scripts.Script):
                                                                      index=ind)
                         # Save images to disk
                         if opts.samples_save:
-                                saving.save_image(processed.images[i], p.outpath_samples, "", seed=p.all_seeds[ind],
-                                                  prompt=p.all_prompts[ind],
-                                                  info=prompt_infotext, p=p, suffix="colorfix")
+                                # Both files were being saved as "colorfix".
+                                # Also added a '-' before the suffix.
+                                if keep_original:
+                                    saving.save_image(processed.images[i], p.outpath_samples, "", seed=p.all_seeds[ind],
+                                                    prompt=p.all_prompts[ind],
+                                                    info=prompt_infotext, p=p, suffix="-original")
                                 saving.save_image(res_img, p.outpath_samples, "", seed=p.all_seeds[ind],
                                                   prompt=p.all_prompts[ind],
-                                                  info=prompt_infotext, p=p, suffix="colorfix")
+                                                  info=prompt_infotext, p=p, suffix="-colorfix")
 
                     processed.images[i] = res_img
 
