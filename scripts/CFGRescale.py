@@ -1,6 +1,6 @@
 import math
 import torch
-
+import re
 import gradio as gr
 import numpy as np
 import modules.scripts as scripts
@@ -13,6 +13,7 @@ from PIL import Image
 
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, noise_like
 
+re_prompt_cfgr = re.compile(r"<cfg_rescale:([^>]+)>")
 
 class Script(scripts.Script):
 
@@ -93,6 +94,19 @@ class Script(scripts.Script):
     def process(self, p, rescale, recolor, rec_strength, show_original):
 
         if globals()['enable_furry_cocks']:
+            # parse <cfg_rescale:[number]> from prompt for override
+            rescale_override = None
+            def found(m):
+                nonlocal rescale_override
+                try:
+                    rescale_override = float(m.group(1))
+                except ValueError:
+                    rescale_override = None
+                return ""
+            p.prompt = re.sub(re_prompt_cfgr, found, p.prompt)
+            if rescale_override is not None:
+                rescale = rescale_override
+            
             globals()['cfg_rescale_fi'] = rescale
         globals()['enable_furry_cocks'] = True
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.cfg_replace
