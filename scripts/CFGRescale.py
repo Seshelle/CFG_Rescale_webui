@@ -108,7 +108,11 @@ class Script(scripts.Script):
                 rescale = rescale_override
             
             globals()['cfg_rescale_fi'] = rescale
+        else:
+            # rescale value is being set from xyz_grid
+            rescale = globals()['cfg_rescale_fi']
         globals()['enable_furry_cocks'] = True
+
         sd_samplers_kdiffusion.CFGDenoiser.combine_denoised = self.cfg_replace
 
         if rescale > 0:
